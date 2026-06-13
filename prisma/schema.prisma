@@ -1,0 +1,388 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                String               @id @default(uuid())
+  fullName          String
+  email             String               @unique
+  passwordHash      String
+  role              Role
+  departmentId      String?
+  isActive          Boolean              @default(true)
+  preferredLanguage String               @default("en")
+  updatedAt         DateTime             @updatedAt
+  notificationPrefs Json?                @default("{\"email\":true, \"sms\":false, \"in_app\":true}")
+  auditLogs         AuditLog[]
+  assignedEquipment Equipment[]          @relation("AssignedOperator")
+  fuelLogs          FuelLog[]
+  maintenanceLogs   MaintenanceLog[]
+  passwordResets    PasswordResetToken[]
+  assignedSchedules ServiceSchedule[]    @relation("AssignedTechnician")
+  usageLogs         UsageLog[]
+  department        Department?          @relation(fields: [departmentId], references: [id])
+  fuelCards         FuelCard[]           @relation("AssignedUser")
+  scheduleChanges   ScheduleHistory[]
+  violations        TechnicianViolation[] @relation("TechnicianViolations")
+}
+
+model Department {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  module      String
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  role         Role
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  
+  @@unique([role, permissionId])
+}
+
+model UserValidation {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  role        Role
+  isUsed      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  createdById String?
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Equipment {
+  id                 String            @id @default(uuid())
+  name               String
+  type               EquipmentType
+  model              String
+  serialNumber       String            @unique
+  barcodeId          String?           @unique
+  year               Int
+  status             EquipmentStatus   @default(active)
+  lastServiceDate    DateTime?
+  nextServiceDate    DateTime?
+  currentOdometer    Float             @default(0)
+  currentHours       Float             @default(0)
+  assignedOperatorId String?
+  documentUrls       String[]
+  // Fuel rate fields: auto-calculated from logs, admin can override
+  fuelRateL_per_km   Float?            // auto-calculated average L/km from past fuel logs
+  defaultFuelRate    Float?            // admin-set override/default when historical data is insufficient
+  fuelTolerance      Float             @default(20.0)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  alerts             Alert[]
+  assignedOperator   User?             @relation("AssignedOperator", fields: [assignedOperatorId], references: [id])
+  fuelLogs           FuelLog[]
+  maintenanceLogs    MaintenanceLog[]
+  schedules          ServiceSchedule[]
+  usageLogs          UsageLog[]
+  warranties         Warranty[]
+}
+
+model Warranty {
+  id          String    @id @default(uuid())
+  equipmentId String
+  provider    String
+  startDate   DateTime
+  endDate     DateTime
+  terms       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+}
+
+model MaintenanceLog {
+  id              String            @id @default(uuid())
+  equipmentId     String
+  technicianId    String
+  type            MaintenanceType
+  serviceType     ServiceType?
+  description     String
+  failureCause    String?
+  downtimeHours   Float?
+  wasAvoidable    Boolean?
+  laborCost       Float             @default(0)
+  partsCost       Float             @default(0)
+  totalCost       Float             @default(0)
+  serviceDate     DateTime
+  beforePhotoUrls String[]
+  afterPhotoUrls  String[]
+  signatureUrl    String?
+  scheduleId      String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  equipment       Equipment         @relation(fields: [equipmentId], references: [id])
+  schedule        ServiceSchedule?  @relation(fields: [scheduleId], references: [id])
+  technician      User              @relation(fields: [technicianId], references: [id])
+  parts           MaintenancePart[]
+}
+
+model MaintenancePart {
+  id               String         @id @default(uuid())
+  maintenanceLogId String
+  partName         String
+  quantity         Int
+  unitCost         Float
+  totalCost        Float
+  maintenanceLog   MaintenanceLog @relation(fields: [maintenanceLogId], references: [id])
+}
+
+model ServiceSchedule {
+  id              String           @id @default(uuid())
+  equipmentId     String
+  technicianId    String
+  title           String
+  serviceType     ServiceType
+  intervalType    IntervalType
+  intervalValue   Float
+  lastOdometer    Float?
+  nextDueOdometer Float?
+  lastHours       Float?
+  nextDueHours    Float?
+  nextDueDate     DateTime
+  status          ScheduleStatus   @default(upcoming)
+  priority        Int              @default(1)
+  isRecurring     Boolean          @default(true)
+  isApproved      Boolean          @default(false)
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  maintenanceLogs MaintenanceLog[]
+  equipment       Equipment        @relation(fields: [equipmentId], references: [id])
+  technician      User             @relation("AssignedTechnician", fields: [technicianId], references: [id])
+  history         ScheduleHistory[]
+  violations      TechnicianViolation[]
+}
+
+model ScheduleHistory {
+  id            String          @id @default(uuid())
+  scheduleId    String
+  changedById   String
+  previousState String
+  newState      String
+  changeReason  String?
+  createdAt     DateTime        @default(now())
+  schedule      ServiceSchedule @relation(fields: [scheduleId], references: [id])
+  changedBy     User            @relation(fields: [changedById], references: [id])
+}
+
+model FuelCard {
+  id             String    @id @default(uuid())
+  cardNumber     String    @unique
+  provider       String
+  assignedUserId String?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  assignedUser   User?     @relation("AssignedUser", fields: [assignedUserId], references: [id])
+  fuelLogs       FuelLog[]
+}
+
+model FuelLog {
+  id           String    @id @default(uuid())
+  equipmentId  String
+  loggedById   String
+  fuelCardId   String?
+  liters       Float
+  costPerLiter Float
+  totalCost    Float
+  odometer     Float?
+  hours        Float?
+  fuelDate     DateTime
+  projectSite  String?
+  notes        String?
+  createdAt    DateTime  @default(now())
+  equipment    Equipment @relation(fields: [equipmentId], references: [id])
+  loggedBy     User      @relation(fields: [loggedById], references: [id])
+  fuelCard     FuelCard? @relation(fields: [fuelCardId], references: [id])
+}
+
+model UsageLog {
+  id               String    @id @default(uuid())
+  equipmentId      String
+  operatorId       String
+  startHours       Float
+  endHours         Float
+  totalHours       Float
+  startOdometer    Float?
+  endOdometer      Float?
+  distanceTraveled Float?
+  idleHours        Float     @default(0)
+  projectSite String
+  shiftDate   DateTime
+  notes       String?
+  createdAt   DateTime  @default(now())
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+  operator    User      @relation(fields: [operatorId], references: [id])
+}
+
+// Technician punishment record: warning → account deactivation
+model TechnicianViolation {
+  id           String        @id @default(uuid())
+  technicianId String
+  scheduleId   String?
+  type         ViolationType
+  reason       String
+  isResolved   Boolean       @default(false)
+  resolvedAt   DateTime?
+  resolvedById String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  technician   User          @relation("TechnicianViolations", fields: [technicianId], references: [id])
+  schedule     ServiceSchedule? @relation(fields: [scheduleId], references: [id])
+}
+
+model Alert {
+  id          String              @id @default(uuid())
+  equipmentId String?
+  type        AlertType
+  severity    AlertSeverity
+  title       String
+  message     String
+  isRead      Boolean             @default(false)
+  channel     NotificationChannel @default(in_app)
+  createdAt   DateTime            @default(now())
+  equipment   Equipment?          @relation(fields: [equipmentId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  module    String
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model EmailLog {
+  id        String          @id @default(uuid())
+  recipient String
+  subject   String
+  status    EmailLogStatus  @default(PENDING)
+  error     String?
+  messageId String?
+  createdAt DateTime        @default(now())
+}
+
+enum EmailLogStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum Role {
+  admin
+  manager
+  technician
+  operator
+}
+
+enum EquipmentType {
+  excavator
+  bulldozer
+  grader
+  truck
+  tipper_truck
+}
+
+enum EquipmentStatus {
+  active
+  under_maintenance
+  retired
+}
+
+enum MaintenanceType {
+  preventive
+  corrective
+}
+
+enum ServiceType {
+  oil_change
+  brake_check
+  tire
+  battery
+  engine
+  hydraulic
+}
+
+enum ScheduleStatus {
+  upcoming
+  due_soon
+  urgent
+  overdue
+  completed
+}
+
+enum IntervalType {
+  days
+  km
+  hours
+}
+
+enum AlertType {
+  schedule_due
+  schedule_overdue
+  corrective_breakdown
+  fuel_anomaly
+  usage_threshold
+}
+
+enum AlertSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+enum NotificationChannel {
+  in_app
+  email
+  sms
+}
+
+enum ViolationType {
+  warning      // First offence: missed/skipped schedule
+  suspension   // Second offence: account temporarily deactivated
+}
+
+model MaintenanceInterval {
+  id            String        @id @default(uuid())
+  equipmentType EquipmentType
+  serviceType   ServiceType
+  intervalValue Float
+  intervalType  IntervalType
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([equipmentType, serviceType])
+}
