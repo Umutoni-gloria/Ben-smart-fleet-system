@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 export default function PermissionsMatrix() {
   const [permissions, setPermissions] = useState<any[]>([])
@@ -8,16 +8,16 @@ export default function PermissionsMatrix() {
 
   const roles = ['admin', 'manager', 'technician', 'operator']
 
-  useEffect(() => {
-    fetchPermissions()
-  }, [])
-
-  async function fetchPermissions() {
+  const fetchPermissions = useCallback(async () => {
     const res = await fetch('/api/permissions')
     const json = await res.json()
     if (json.success) setPermissions(json.data)
     setLoading(false)
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchPermissions()
+  }, [fetchPermissions])
 
   async function togglePermission(permissionId: string, role: string, currentlyHas: boolean) {
     const action = currentlyHas ? 'revoke' : 'grant'
