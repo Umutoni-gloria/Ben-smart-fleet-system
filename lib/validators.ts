@@ -63,6 +63,12 @@ export const scheduleSchema = z.object({
   intervalType: z.enum(['days', 'km', 'hours']).optional(),
   intervalValue: z.number().min(1).optional(),
   nextDueDate: z.string().min(1, 'Due date is required'),
+  // KM-based schedules: odometer reading at which service is due
+  nextDueOdometer: z.number().min(0).optional(),
+  lastOdometer: z.number().min(0).optional(),
+  // Hours-based schedules: engine hours at which service is due
+  nextDueHours: z.number().min(0).optional(),
+  lastHours: z.number().min(0).optional(),
   isRecurring: z.boolean().default(true),
   priority: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
   notes: z.string().optional(),

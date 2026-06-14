@@ -5,9 +5,10 @@
  * Sends in-app alerts (prisma.alert) AND emails (via mailer.ts) for any
  * system event (fuel anomaly, schedule overdue, breakdown, etc.).
  *
- * FIX: Removed the silent `if (GMAIL_USER && GMAIL_PASS)` guard that was
- * preventing emails from being sent. The mailer itself now handles missing
- * credentials with explicit errors. Every email attempt is logged to EmailLog.
+ * FIX: Now respects each user's notificationPrefs.email field.
+ *      Users with email notifications disabled will NOT receive emails.
+ *      When emails[] list is passed directly (e.g. from role-based queries),
+ *      we look up those users' prefs and filter accordingly.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -15,7 +16,7 @@ import prisma from './prisma'
 import { sendAlertEmail } from './mailer'
 
 export interface NotificationParams {
-  /** Optional single user ID — we'll look up their email */
+  /** Optional single user ID — we'll look up their email + prefs */
   userId?: string
   /** Optional list of email addresses to notify directly */
   emails?: string[]
@@ -29,7 +30,8 @@ export interface NotificationParams {
 /**
  * Send a notification:
  * 1. Creates an in-app Alert record in the database.
- * 2. Sends an email to all provided emails + the user's email (if userId given).
+ * 2. Sends an email ONLY to recipients who have email notifications enabled
+ *    in their notificationPrefs ({"email": true}).
  *
  * All email attempts are logged to EmailLog (via mailer.ts).
  * Failures are logged but do NOT throw — a failed email must never
@@ -54,30 +56,75 @@ export async function sendNotification(params: NotificationParams): Promise<void
     console.error('[Notification] Failed to create alert record:', err?.message)
   }
 
-  // 2. Gather all unique email addresses to notify
-  const allEmails = new Set<string>(emails.filter(Boolean))
+  // 2. Build a map of email → hasEmailEnabled using DB prefs
+  //    so we can filter out users who opted out of email notifications.
+  const emailsToCheck = new Set<string>(emails.filter(Boolean))
 
+  // Also add the single userId's email if provided
   if (userId) {
     try {
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { email: true },
+        select: { email: true, notificationPrefs: true },
       })
-      if (user?.email) allEmails.add(user.email)
+      if (user?.email) {
+        const prefs = user.notificationPrefs as Record<string, boolean> | null
+        const emailEnabled = prefs?.email !== false // default true if not set
+        if (emailEnabled) {
+          emailsToCheck.add(user.email)
+        } else {
+          console.log(`[Notification] User ${user.email} has email notifications disabled — skipping`)
+        }
+      }
     } catch (err: any) {
-      console.error('[Notification] Failed to fetch user email:', err?.message)
+      console.error('[Notification] Failed to fetch user prefs:', err?.message)
     }
   }
 
-  if (allEmails.size === 0) {
-    console.warn(`[Notification] No recipients for alert: "${title}" — skipping email`)
+  // 3. For the emails[] list (role-based), look up their notificationPrefs
+  //    and filter to only those who have email: true
+  const filteredEmails = new Set<string>()
+
+  if (emails.length > 0) {
+    try {
+      const users = await prisma.user.findMany({
+        where: { email: { in: emails.filter(Boolean) }, isActive: true },
+        select: { email: true, notificationPrefs: true },
+      })
+
+      for (const user of users) {
+        const prefs = user.notificationPrefs as Record<string, boolean> | null
+        const emailEnabled = prefs?.email !== false // default true if pref not set
+        if (emailEnabled) {
+          filteredEmails.add(user.email)
+        } else {
+          console.log(`[Notification] "${user.email}" has email notifications disabled — skipping`)
+        }
+      }
+    } catch (err: any) {
+      console.error('[Notification] Failed to look up user prefs for email list:', err?.message)
+      // Fallback: send to all if DB lookup fails
+      emails.forEach((e) => filteredEmails.add(e))
+    }
+  }
+
+  // Merge userId-based email (already filtered above) with role-based emails
+  if (userId) {
+    // userId email was already added to emailsToCheck with pref check above
+    emailsToCheck.forEach((e) => filteredEmails.add(e))
+  }
+
+  if (filteredEmails.size === 0) {
+    console.warn(`[Notification] No email-enabled recipients for alert: "${title}" — skipping email`)
     return
   }
 
-  console.log(`[Notification] Sending alert "${title}" to ${allEmails.size} recipient(s): ${[...allEmails].join(', ')}`)
+  console.log(
+    `[Notification] Sending alert "${title}" to ${filteredEmails.size} recipient(s): ${[...filteredEmails].join(', ')}`
+  )
 
-  // 3. Send emails — each attempt is independently logged
-  for (const email of allEmails) {
+  // 4. Send emails — each attempt is independently logged
+  for (const email of filteredEmails) {
     try {
       await sendAlertEmail(email, title, message)
     } catch (err: any) {

@@ -154,6 +154,27 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // ─── COMPUTE nextDueOdometer / nextDueHours ────────────────────────────────
+    // If the form sent an explicit target, use it.
+    // Otherwise auto-compute from the equipment's current reading + intervalValue.
+    const isVehicle = ['truck', 'tipper_truck'].includes(equipment.type)
+    const iType = parsed.data.intervalType
+
+    let nextDueOdometer: number | null = parsed.data.nextDueOdometer ?? null
+    let lastOdometer: number | null = parsed.data.lastOdometer ?? null
+    let nextDueHours: number | null = parsed.data.nextDueHours ?? null
+    let lastHours: number | null = parsed.data.lastHours ?? null
+
+    // Auto-compute if not provided but interval type matches the equipment axis
+    if (iType === 'km' && nextDueOdometer === null && parsed.data.intervalValue) {
+      lastOdometer = equipment.currentOdometer
+      nextDueOdometer = equipment.currentOdometer + parsed.data.intervalValue
+    }
+    if (iType === 'hours' && nextDueHours === null && parsed.data.intervalValue) {
+      lastHours = equipment.currentHours
+      nextDueHours = equipment.currentHours + parsed.data.intervalValue
+    }
+
     // ─── CREATE SCHEDULE ─────────────────────────────────────────────────────
     // Priority mapping: low=1, medium=2, high=3, critical=4
     const priorityMap: Record<string, number> = {
@@ -172,6 +193,11 @@ export async function POST(req: NextRequest) {
         intervalType: (parsed.data.intervalType ?? 'days') as never,
         intervalValue: parsed.data.intervalValue ?? 1,
         nextDueDate: new Date(parsed.data.nextDueDate),
+        // KM / Hours tracking — these are what the maintenance checker uses
+        nextDueOdometer,
+        lastOdometer,
+        nextDueHours,
+        lastHours,
         isRecurring: parsed.data.scheduleType === 'follow_up'
           ? false
           : parsed.data.isRecurring,

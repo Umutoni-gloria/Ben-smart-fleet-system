@@ -97,6 +97,20 @@ export const translations = {
     viewAll: 'View all',
     services: 'service',
     servicesPlural: 'services',
+    // Maintenance KPI cards (admin/manager dashboard)
+    upcomingServices: 'Upcoming Services',
+    dueSoonServices: 'Due Soon',
+    urgentServices: 'Urgent',
+    overdueServices: 'Overdue',
+    assetsRequiringMaintenance: 'Assets Requiring Maintenance',
+    complianceRate: 'Compliance Rate',
+    // Operator next-service display
+    nextService: 'Next Service',
+    remaining: 'remaining',
+    noActiveSchedule: 'No active service schedule',
+    serviceStatus: 'Service Status',
+    kmRemaining: 'km remaining',
+    hrsRemaining: 'hrs remaining',
   },
   fr: {
     // Navigation / Sidebar
@@ -194,6 +208,20 @@ export const translations = {
     viewAll: 'Voir tout',
     services: 'entretien',
     servicesPlural: 'entretiens',
+    // Maintenance KPI cards (admin/manager dashboard)
+    upcomingServices: 'Services à venir',
+    dueSoonServices: 'Prévu bientôt',
+    urgentServices: 'Urgent',
+    overdueServices: 'En retard',
+    assetsRequiringMaintenance: 'Équipements nécessitant une maintenance',
+    complianceRate: 'Taux de conformité',
+    // Operator next-service display
+    nextService: 'Prochain service',
+    remaining: 'restants',
+    noActiveSchedule: 'Aucun calendrier de service actif',
+    serviceStatus: 'Statut du service',
+    kmRemaining: 'km restants',
+    hrsRemaining: 'h restantes',
   },
   rw: {
     // Navigation / Sidebar
@@ -291,5 +319,19 @@ export const translations = {
     viewAll: 'Reba byose',
     services: 'isanwa',
     servicesPlural: 'incuro zasanwe',
+    // Maintenance KPI cards (admin/manager dashboard)
+    upcomingServices: 'Isanwa Rizaza',
+    dueSoonServices: 'Rizasabwa Vuba',
+    urgentServices: 'Byihutirwa',
+    overdueServices: 'Byatinze',
+    assetsRequiringMaintenance: 'Ibikoresho Bisaba Isanwa',
+    complianceRate: 'Igipimo cy\'Ibikurikizwa',
+    // Operator next-service display
+    nextService: 'Isanwa Rikurikira',
+    remaining: 'bisigaye',
+    noActiveSchedule: 'Nta gahunda y\'isanwa ihari',
+    serviceStatus: 'Imimerere y\'Isanwa',
+    kmRemaining: 'km bisigaye',
+    hrsRemaining: 'amasaha asigaye',
   }
 };

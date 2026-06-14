@@ -149,7 +149,7 @@ export default function MaintenancePage() {
         {/* Logs table */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           {loading ? (
-            <div className="px-6 py-16 text-center text-sm text-slate-450 font-medium">
+            <div className="px-6 py-16 text-center text-sm text-slate-500 font-medium">
               Loading maintenance logs...
             </div>
           ) : filtered.length === 0 ? (
@@ -158,7 +158,7 @@ export default function MaintenancePage() {
                 <Wrench className="w-8 h-8" />
               </div>
               <p className="text-sm font-semibold text-slate-700">No maintenance logs found</p>
-              <p className="text-xs text-slate-450 mt-1 font-medium">
+              <p className="text-xs text-slate-500 mt-1 font-medium">
                 Log your first maintenance record to get started
               </p>
             </div>
@@ -210,10 +210,10 @@ export default function MaintenancePage() {
                           </p>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm font-medium text-slate-650">
+                      <td className="px-6 py-4 text-sm font-medium text-slate-700">
                         {log.technician.fullName}
                       </td>
-                      <td className="px-6 py-4 text-sm font-medium text-slate-650">
+                      <td className="px-6 py-4 text-sm font-medium text-slate-700">
                         {new Date(log.serviceDate).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4">
@@ -221,7 +221,7 @@ export default function MaintenancePage() {
                           RWF {log.totalCost.toLocaleString()}
                         </p>
                         {log.parts.length > 0 && (
-                          <p className="text-xs text-slate-450 mt-0.5 font-medium">
+                          <p className="text-xs text-slate-500 mt-0.5 font-medium">
                             {log.parts.length} part{log.parts.length > 1 ? 's' : ''}
                           </p>
                         )}

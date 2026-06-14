@@ -99,7 +99,7 @@ export default async function DashboardPage() {
 
   // ─── ADMIN & MANAGER DASHBOARD ───────────────────────────────
   if (session.role === 'admin' || session.role === 'manager') {
-        const [
+    const [
       totalEquipment,
       activeEquipment,
       underMaintenance,
@@ -115,6 +115,11 @@ export default async function DashboardPage() {
       mostMaintained,
       usageThisMonth,
       totalUsers,
+      upcomingCount,
+      dueSoonCount,
+      assetsRequiringMaintenance,
+      completedThisMonth,
+      overdueThisMonth,
     ] = await Promise.all([
       prisma.equipment.count(),
       prisma.equipment.count({ where: { status: 'active' } }),
@@ -183,6 +188,20 @@ export default async function DashboardPage() {
         _sum: { totalHours: true, distanceTraveled: true },
       }),
       prisma.user.count({ where: { isActive: true } }),
+      // New maintenance KPI queries
+      prisma.serviceSchedule.count({ where: { status: 'upcoming' } }),
+      prisma.serviceSchedule.count({ where: { status: 'due_soon' } }),
+      prisma.equipment.count({
+        where: {
+          schedules: { some: { status: { in: ['due_soon', 'urgent', 'overdue'] } } },
+        },
+      }),
+      prisma.serviceSchedule.count({
+        where: { status: 'completed', updatedAt: { gte: startOfMonth } },
+      }),
+      prisma.serviceSchedule.count({
+        where: { status: 'overdue', updatedAt: { gte: startOfMonth } },
+      }),
     ])
 
     const mostMaintainedWithNames = await prisma.equipment.findMany({
@@ -201,6 +220,12 @@ export default async function DashboardPage() {
     const maintenanceLastMonthAmt = maintenanceCostLastMonth._sum.totalCost || 0
     const fuelThisMonthAmt = fuelCostThisMonth._sum.totalCost || 0
     const fuelLastMonthAmt = fuelCostLastMonth._sum.totalCost || 0
+
+    // Compliance rate = completed / (completed + overdue) this month
+    const complianceTotal = completedThisMonth + overdueThisMonth
+    const complianceRate = complianceTotal > 0
+      ? Math.round((completedThisMonth / complianceTotal) * 100)
+      : 100
 
     const adminQuickActions = [
       { label: '+ Equipment', href: '/equipment/new', color: 'bg-blue-600 hover:bg-blue-700' },
@@ -316,6 +341,68 @@ export default async function DashboardPage() {
                 </div>
               )
             })}
+          </div>
+
+          {/* ── Maintenance Status KPI Row ──────────────────────────────── */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+              <Wrench className="w-4 h-4 text-slate-500" />
+              <h2 className="text-sm font-bold text-slate-800">Maintenance Schedule Status</h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-slate-100">
+              {[
+                {
+                  label: t.upcomingServices,
+                  value: upcomingCount,
+                  bg: 'bg-slate-50',
+                  color: 'text-slate-800',
+                  dot: 'bg-slate-400',
+                },
+                {
+                  label: t.dueSoonServices,
+                  value: dueSoonCount,
+                  bg: dueSoonCount > 0 ? 'bg-blue-50' : 'bg-slate-50',
+                  color: dueSoonCount > 0 ? 'text-blue-800' : 'text-slate-400',
+                  dot: 'bg-blue-500',
+                },
+                {
+                  label: t.urgentServices,
+                  value: urgentSchedules.length,
+                  bg: urgentSchedules.length > 0 ? 'bg-orange-50' : 'bg-slate-50',
+                  color: urgentSchedules.length > 0 ? 'text-orange-800' : 'text-slate-400',
+                  dot: 'bg-orange-500',
+                },
+                {
+                  label: t.overdueServices,
+                  value: overdueSchedules.length,
+                  bg: overdueSchedules.length > 0 ? 'bg-rose-50' : 'bg-slate-50',
+                  color: overdueSchedules.length > 0 ? 'text-rose-800' : 'text-slate-400',
+                  dot: 'bg-rose-500',
+                },
+                {
+                  label: t.assetsRequiringMaintenance,
+                  value: assetsRequiringMaintenance,
+                  bg: assetsRequiringMaintenance > 0 ? 'bg-amber-50' : 'bg-slate-50',
+                  color: assetsRequiringMaintenance > 0 ? 'text-amber-800' : 'text-slate-400',
+                  dot: 'bg-amber-500',
+                },
+                {
+                  label: t.complianceRate,
+                  value: `${complianceRate}%`,
+                  bg: complianceRate >= 80 ? 'bg-emerald-50' : complianceRate >= 50 ? 'bg-yellow-50' : 'bg-rose-50',
+                  color: complianceRate >= 80 ? 'text-emerald-800' : complianceRate >= 50 ? 'text-yellow-800' : 'text-rose-800',
+                  dot: complianceRate >= 80 ? 'bg-emerald-500' : complianceRate >= 50 ? 'bg-yellow-500' : 'bg-rose-500',
+                },
+              ].map((kpi) => (
+                <div key={kpi.label} className={`${kpi.bg} px-4 py-5 flex flex-col gap-1.5 hover:-translate-y-0.5 transition-all duration-200`}>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${kpi.dot}`} />
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-tight">{kpi.label}</p>
+                  </div>
+                  <p className={`text-2xl font-bold ${kpi.color}`}>{kpi.value}</p>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Cost Cards Row with Trend */}
@@ -912,7 +999,7 @@ export default async function DashboardPage() {
       schedules: {
         where: { status: { not: 'completed' } },
         orderBy: { nextDueDate: 'asc' },
-        take: 3,
+        take: 5,
       },
       fuelLogs: {
         orderBy: { fuelDate: 'desc' },
@@ -920,6 +1007,26 @@ export default async function DashboardPage() {
       },
     },
   })
+
+  // Helper: compute next-service info for an equipment card
+  function getNextServiceInfo(eq: typeof myEquipment[number]) {
+    const isVehicle = ['truck', 'tipper_truck'].includes(eq.type)
+    const currentReading = isVehicle ? eq.currentOdometer : eq.currentHours
+
+    // Pick the schedule with the least remaining usage (i.e. most urgent)
+    let best: { schedule: typeof eq.schedules[number]; remaining: number } | null = null
+
+    for (const s of eq.schedules) {
+      const nextDue = isVehicle ? s.nextDueOdometer : s.nextDueHours
+      if (nextDue === null) continue
+      const remaining = nextDue - currentReading
+      if (best === null || remaining < best.remaining) {
+        best = { schedule: s, remaining }
+      }
+    }
+
+    return { isVehicle, best }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8">
@@ -994,18 +1101,47 @@ export default async function DashboardPage() {
                         {eq.model} · {eq.year}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs text-slate-400 font-medium">Odometer</p>
-                      <p className="text-sm font-bold text-slate-900">
-                        {eq.currentOdometer.toLocaleString()} km
-                      </p>
-                    </div>
-                    <div className="text-right ml-4">
-                      <p className="text-xs text-slate-400 font-medium">Engine Hours</p>
-                      <p className="text-sm font-bold text-slate-900">
-                        {eq.currentHours.toLocaleString()} hrs
-                      </p>
-                    </div>
+                    {/* Next Service Info */}
+                    {(() => {
+                      const { isVehicle, best } = getNextServiceInfo(eq)
+                      if (!best) {
+                        return (
+                          <div className="text-right">
+                            <p className="text-xs text-slate-400 font-medium">{t.nextService}</p>
+                            <p className="text-xs text-slate-400">{t.noActiveSchedule}</p>
+                          </div>
+                        )
+                      }
+                      const { schedule, remaining } = best
+                      const absRemaining = Math.abs(remaining)
+                      const formattedRemaining = absRemaining.toLocaleString(undefined, { maximumFractionDigits: 0 })
+                      const unit = isVehicle ? 'km' : 'hrs'
+                      const statusColors: Record<string, string> = {
+                        upcoming: 'bg-emerald-100 text-emerald-700',
+                        due_soon: 'bg-blue-100 text-blue-700',
+                        urgent: 'bg-orange-100 text-orange-700',
+                        overdue: 'bg-rose-100 text-rose-700',
+                      }
+                      const statusColor = statusColors[schedule.status] || 'bg-slate-100 text-slate-500'
+                      return (
+                        <div className="text-right ml-4 flex-shrink-0">
+                          <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-0.5">{t.nextService}</p>
+                          <p className="text-sm font-bold text-slate-900 leading-tight">
+                            {schedule.serviceType
+                              ? schedule.serviceType.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+                              : schedule.title}
+                          </p>
+                          <p className={`text-xs font-semibold mt-0.5 ${remaining < 0 ? 'text-rose-600' : 'text-slate-600'}`}>
+                            {remaining < 0
+                              ? `${formattedRemaining} ${unit} overdue`
+                              : `${formattedRemaining} ${unit} ${t.remaining}`}
+                          </p>
+                          <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusColor}`}>
+                            {schedule.status.replace('_', ' ')}
+                          </span>
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
 

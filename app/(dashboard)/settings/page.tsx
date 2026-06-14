@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { translations, Locale } from '@/lib/translations'
-import { User, Bell, Shield, Wrench, Mail } from 'lucide-react'
+import { User, Bell, Shield, Wrench, Mail, Inbox } from 'lucide-react'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -13,6 +13,9 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
+  const [emailLogs, setEmailLogs] = useState<any[]>([])
+  const [emailLogSummary, setEmailLogSummary] = useState<any>(null)
+  const [loadingEmailLogs, setLoadingEmailLogs] = useState(false)
 
   // Determine current language from cookie or default to en
   const [lang, setLang] = useState<Locale>('en')
@@ -60,6 +63,22 @@ export default function SettingsPage() {
         .finally(() => setLoadingIntervals(false))
     }
   }, [activeTab, intervals.length])
+
+  useEffect(() => {
+    if (activeTab === 'email-logs') {
+      setLoadingEmailLogs(true)
+      fetch('/api/debug/email-logs')
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.success) {
+            setEmailLogs(json.data)
+            setEmailLogSummary(json.summary)
+          }
+        })
+        .catch((err) => console.error('Failed to fetch email logs:', err))
+        .finally(() => setLoadingEmailLogs(false))
+    }
+  }, [activeTab])
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -123,6 +142,9 @@ export default function SettingsPage() {
     ...(user?.role === 'admin' || user?.role === 'manager'
       ? [{ id: 'intervals', label: 'Maintenance Intervals', icon: Wrench, href: null }]
       : []),
+    ...(user?.role === 'admin' || user?.role === 'manager'
+      ? [{ id: 'email-logs', label: 'Email Logs', icon: Inbox, href: null }]
+      : []),
     ...(user?.role === 'admin'
       ? [{ id: 'email-test', label: 'Email Diagnostics', icon: Mail, href: '/settings/email-test' }]
       : []),
@@ -177,7 +199,7 @@ export default function SettingsPage() {
                 <form onSubmit={handleSave}>
                   <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-slate-900 capitalize">
-                      {activeTab === 'profile' ? t.profileInfo : activeTab === 'notifications' ? t.alerts : activeTab === 'intervals' ? 'Maintenance Intervals' : 'Security'}
+                      {activeTab === 'profile' ? t.profileInfo : activeTab === 'notifications' ? t.alerts : activeTab === 'intervals' ? 'Maintenance Intervals' : activeTab === 'email-logs' ? 'Email Logs' : 'Security'}
                     </h2>
                     {successMsg && <span className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded-full">{successMsg}</span>}
                   </div>
@@ -371,6 +393,95 @@ export default function SettingsPage() {
                             </div>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {activeTab === 'email-logs' && (
+                      <div className="space-y-4">
+                        <p className="text-sm text-slate-500">
+                          Shows the last 50 email attempts. Use this to verify which users are receiving notifications.
+                        </p>
+
+                        {/* Summary pills */}
+                        {emailLogSummary && (
+                          <div className="flex gap-3 flex-wrap">
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+                              Total: {emailLogSummary.total}
+                            </span>
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                              ✅ Sent: {emailLogSummary.sent}
+                            </span>
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
+                              ❌ Failed: {emailLogSummary.failed}
+                            </span>
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700">
+                              ⏳ Pending: {emailLogSummary.pending}
+                            </span>
+                          </div>
+                        )}
+
+                        {loadingEmailLogs ? (
+                          <div className="text-center py-8 text-sm text-slate-400">Loading email logs...</div>
+                        ) : emailLogs.length === 0 ? (
+                          <div className="text-center py-10 text-slate-400 text-sm">
+                            <Inbox className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                            No email logs yet
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto rounded-xl border border-slate-100">
+                            <table className="w-full text-sm">
+                              <thead className="bg-slate-50 border-b border-slate-100">
+                                <tr>
+                                  <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">Status</th>
+                                  <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">Recipient</th>
+                                  <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">Subject</th>
+                                  <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">Time</th>
+                                  <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">Error</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-50">
+                                {emailLogs.map((log: any) => (
+                                  <tr key={log.id} className="hover:bg-slate-50/60 transition-colors">
+                                    <td className="px-4 py-3">
+                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
+                                        log.status === 'SENT'
+                                          ? 'bg-green-100 text-green-700'
+                                          : log.status === 'FAILED'
+                                          ? 'bg-red-100 text-red-700'
+                                          : 'bg-yellow-100 text-yellow-700'
+                                      }`}>
+                                        {log.status === 'SENT' ? '✅' : log.status === 'FAILED' ? '❌' : '⏳'} {log.status}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-800 font-medium">{log.recipient}</td>
+                                    <td className="px-4 py-3 text-slate-600 max-w-xs truncate" title={log.subject}>{log.subject}</td>
+                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap text-xs">
+                                      {new Date(log.createdAt).toLocaleString()}
+                                    </td>
+                                    <td className="px-4 py-3 text-red-500 text-xs max-w-xs truncate" title={log.error || ''}>
+                                      {log.error || <span className="text-slate-300">—</span>}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLoadingEmailLogs(true)
+                            fetch('/api/debug/email-logs')
+                              .then(r => r.json())
+                              .then(json => { if (json.success) { setEmailLogs(json.data); setEmailLogSummary(json.summary) } })
+                              .catch(console.error)
+                              .finally(() => setLoadingEmailLogs(false))
+                          }}
+                          className="text-xs text-orange-500 hover:text-orange-700 font-medium flex items-center gap-1"
+                        >
+                          ↻ Refresh
+                        </button>
                       </div>
                     )}
                   </div>

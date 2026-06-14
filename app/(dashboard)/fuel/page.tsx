@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Fuel, Gauge, Calendar, Plus, CreditCard } from 'lucide-react'
+import { Fuel, Gauge, Calendar, Plus } from 'lucide-react'
 import EquipmentIcon from '@/components/ui/EquipmentIcon'
 
 type FuelLog = {
@@ -98,22 +98,13 @@ export default function FuelLogsPage() {
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => router.push('/fuel/cards')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-orange-500 text-sm font-medium bg-orange-50 hover:bg-orange-100 transition-colors"
-            >
-              <CreditCard size={16} />
-              Fuel Cards
-            </button>
-            <button
-              onClick={() => router.push('/fuel/new')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium bg-orange-500 hover:bg-orange-600 transition-colors"
-            >
-              <Plus size={16} />
-              Log Fuel
-            </button>
-          </div>
+          <button
+            onClick={() => router.push('/fuel/new')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium bg-orange-500 hover:bg-orange-600 transition-colors"
+          >
+            <Plus size={16} />
+            Log Fuel
+          </button>
         </div>
 
         {/* Summary cards */}

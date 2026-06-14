@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Camera, X } from 'lucide-react'
 import EquipmentIcon from '@/components/ui/EquipmentIcon'
 
 type MaintenanceLog = {
@@ -18,6 +18,9 @@ type MaintenanceLog = {
   totalCost: number
   serviceDate: string
   createdAt: string
+  beforePhotoUrls: string[]
+  afterPhotoUrls: string[]
+  signatureUrl: string | null
   equipment: { id: string; name: string; type: string }
   technician: { id: string; fullName: string; email: string }
   parts: {
@@ -38,6 +41,7 @@ export default function MaintenanceDetailPage() {
   const [log, setLog] = useState<MaintenanceLog | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
+  const [lightbox, setLightbox] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchLog() {
@@ -208,6 +212,112 @@ export default function MaintenanceDetailPage() {
                 </p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Documentation: Photos & Signature */}
+        {(log.beforePhotoUrls?.length > 0 || log.afterPhotoUrls?.length > 0 || log.signatureUrl) && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-4">
+            <div className="flex items-center gap-2 mb-5">
+              <Camera className="w-4 h-4 text-slate-500" />
+              <h3 className="text-sm font-semibold text-gray-800">Documentation</h3>
+            </div>
+
+            {/* Before Photos */}
+            {log.beforePhotoUrls?.length > 0 && (
+              <div className="mb-5">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  Before Photos ({log.beforePhotoUrls.length})
+                </p>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {log.beforePhotoUrls.map((url, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setLightbox(url)}
+                      className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 hover:border-orange-300 transition-colors shadow-sm"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt={`Before photo ${i + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                        <span className="text-white text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity">View</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* After Photos */}
+            {log.afterPhotoUrls?.length > 0 && (
+              <div className="mb-5">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  After Photos ({log.afterPhotoUrls.length})
+                </p>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {log.afterPhotoUrls.map((url, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setLightbox(url)}
+                      className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 hover:border-orange-300 transition-colors shadow-sm"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt={`After photo ${i + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                        <span className="text-white text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity">View</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Signature */}
+            {log.signatureUrl && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  Technician Signature
+                </p>
+                <div className="border border-slate-200 rounded-xl bg-slate-50 p-3 inline-block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={log.signatureUrl}
+                    alt="Technician signature"
+                    className="h-20 object-contain"
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-1">{log.technician.fullName}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Lightbox */}
+        {lightbox && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            onClick={() => setLightbox(null)}
+          >
+            <button
+              onClick={() => setLightbox(null)}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightbox}
+              alt="Full size"
+              className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
         )}
 

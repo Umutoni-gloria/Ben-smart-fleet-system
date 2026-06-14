@@ -247,6 +247,13 @@ export default function NewUsagePage() {
               </h2>
 
               <div className="grid grid-cols-2 gap-4">
+                {/* Autofill notice banner */}
+                <div className="col-span-2 flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5">
+                  <span className="text-blue-400" style={{fontSize: '15px'}}>ℹ️</span>
+                  <p className="text-xs text-blue-700 font-medium">
+                    <span className="font-semibold">Start {isVehicle ? 'Odometer' : 'Hours'}</span> is autofilled from the equipment&apos;s current reading — this field cannot be edited.
+                  </p>
+                </div>
                 {isVehicle ? (
                   <>
                     <div>
@@ -257,14 +264,14 @@ export default function NewUsagePage() {
                         type="number"
                         name="startOdometer"
                         value={form.startOdometer}
-                        onChange={handleChange}
+                        readOnly
+                        disabled
                         required
                         min={0}
-                        placeholder="e.g. 50000"
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none text-gray-900"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none text-gray-500 bg-slate-50 cursor-not-allowed"
                       />
-                      <p className="text-xs text-gray-400 mt-1">
-                        Auto-filled from current odometer
+                      <p className="text-xs text-blue-500 mt-1 flex items-center gap-1">
+                        <span>🔒</span> Auto-filled from current odometer
                       </p>
                     </div>
                     <div>
@@ -293,15 +300,15 @@ export default function NewUsagePage() {
                         type="number"
                         name="startHours"
                         value={form.startHours}
-                        onChange={handleChange}
+                        readOnly
+                        disabled
                         required
                         min={0}
                         step={0.1}
-                        placeholder="e.g. 1250"
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none text-gray-900"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none text-gray-500 bg-slate-50 cursor-not-allowed"
                       />
-                      <p className="text-xs text-gray-400 mt-1">
-                        Auto-filled from current hours
+                      <p className="text-xs text-blue-500 mt-1 flex items-center gap-1">
+                        <span>🔒</span> Auto-filled from current hours
                       </p>
                     </div>
                     <div>
