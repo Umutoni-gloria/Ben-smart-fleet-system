@@ -52,8 +52,8 @@ export async function sendNotification(params: NotificationParams): Promise<void
         isRead: false,
       },
     })
-  } catch (err: any) {
-    console.error('[Notification] Failed to create alert record:', err?.message)
+  } catch (err) {
+    console.error('[Notification] Failed to create alert record:', err instanceof Error ? err.message : err)
   }
 
   // 2. Build a map of email → hasEmailEnabled using DB prefs
@@ -76,8 +76,8 @@ export async function sendNotification(params: NotificationParams): Promise<void
           console.log(`[Notification] User ${user.email} has email notifications disabled — skipping`)
         }
       }
-    } catch (err: any) {
-      console.error('[Notification] Failed to fetch user prefs:', err?.message)
+    } catch (err) {
+      console.error('[Notification] Failed to fetch user prefs:', err instanceof Error ? err.message : err)
     }
   }
 
@@ -101,8 +101,8 @@ export async function sendNotification(params: NotificationParams): Promise<void
           console.log(`[Notification] "${user.email}" has email notifications disabled — skipping`)
         }
       }
-    } catch (err: any) {
-      console.error('[Notification] Failed to look up user prefs for email list:', err?.message)
+    } catch (err) {
+      console.error('[Notification] Failed to look up user prefs for email list:', err instanceof Error ? err.message : err)
       // Fallback: send to all if DB lookup fails
       emails.forEach((e) => filteredEmails.add(e))
     }
@@ -127,9 +127,9 @@ export async function sendNotification(params: NotificationParams): Promise<void
   for (const email of filteredEmails) {
     try {
       await sendAlertEmail(email, title, message)
-    } catch (err: any) {
+    } catch (err) {
       // Error already logged inside mailer.ts — just note it here
-      console.error(`[Notification] Email delivery failed for ${email}: ${err?.message}`)
+      console.error(`[Notification] Email delivery failed for ${email}:`, err instanceof Error ? err.message : err)
     }
   }
 }

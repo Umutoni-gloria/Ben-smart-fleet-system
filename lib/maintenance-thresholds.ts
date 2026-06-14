@@ -256,8 +256,8 @@ export async function checkMaintenanceThresholds(equipmentId: string): Promise<v
     // has already exceeded (or is approaching) the interval from zero, auto-create
     // a pending recommendation schedule and fire an alert.
     await checkUnscheduledIntervals(equipment, currentReading, unit, isVehicle, managerEmails)
-  } catch (error: any) {
-    console.error('[MaintenanceThresholds] Error:', error?.message)
+  } catch (error) {
+    console.error('[MaintenanceThresholds] Error:', error instanceof Error ? error.message : error)
   }
 }
 
@@ -327,7 +327,7 @@ async function checkUnscheduledIntervals(
     if (duplicate) continue
 
     // Create a recommended schedule
-    const recommendedSchedule = await prisma.serviceSchedule.create({
+    await prisma.serviceSchedule.create({
       data: {
         equipmentId: equipment.id,
         technicianId: tech.id,

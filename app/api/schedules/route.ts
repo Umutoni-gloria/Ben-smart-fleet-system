@@ -157,7 +157,6 @@ export async function POST(req: NextRequest) {
     // ─── COMPUTE nextDueOdometer / nextDueHours ────────────────────────────────
     // If the form sent an explicit target, use it.
     // Otherwise auto-compute from the equipment's current reading + intervalValue.
-    const isVehicle = ['truck', 'tipper_truck'].includes(equipment.type)
     const iType = parsed.data.intervalType
 
     let nextDueOdometer: number | null = parsed.data.nextDueOdometer ?? null

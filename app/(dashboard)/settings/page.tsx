@@ -6,15 +6,47 @@ import Link from 'next/link'
 import { translations, Locale } from '@/lib/translations'
 import { User, Bell, Shield, Wrench, Mail, Inbox } from 'lucide-react'
 
+interface UserProfile {
+  id: string
+  fullName: string
+  role: string
+  email: string
+  preferredLanguage: string
+  notificationPrefs: Record<string, boolean>
+}
+
+interface EmailLog {
+  id: string
+  status: string
+  recipient: string
+  subject: string
+  createdAt: string
+  error?: string | null
+}
+
+interface EmailLogSummary {
+  total: number
+  sent: number
+  failed: number
+  pending: number
+}
+
+interface MaintenanceInterval {
+  id: string
+  equipmentType: string
+  serviceType: string
+  intervalValue: number
+}
+
 export default function SettingsPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('profile')
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
-  const [emailLogs, setEmailLogs] = useState<any[]>([])
-  const [emailLogSummary, setEmailLogSummary] = useState<any>(null)
+  const [emailLogs, setEmailLogs] = useState<EmailLog[]>([])
+  const [emailLogSummary, setEmailLogSummary] = useState<EmailLogSummary | null>(null)
   const [loadingEmailLogs, setLoadingEmailLogs] = useState(false)
 
   // Determine current language from cookie or default to en
@@ -46,7 +78,7 @@ export default function SettingsPage() {
     fetchUser()
   }, [])
 
-  const [intervals, setIntervals] = useState<any[]>([])
+  const [intervals, setIntervals] = useState<MaintenanceInterval[]>([])
   const [loadingIntervals, setLoadingIntervals] = useState(false)
 
   useEffect(() => {
@@ -440,7 +472,7 @@ export default function SettingsPage() {
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-50">
-                                {emailLogs.map((log: any) => (
+                                {emailLogs.map((log: EmailLog) => (
                                   <tr key={log.id} className="hover:bg-slate-50/60 transition-colors">
                                     <td className="px-4 py-3">
                                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${

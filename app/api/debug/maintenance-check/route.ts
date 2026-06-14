@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const session = await getSession()
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -105,8 +105,8 @@ export async function GET(req: NextRequest) {
       })),
       recentEmailLogs: emailLogs,
     })
-  } catch (error: any) {
-    console.error('[/api/debug/maintenance-check] Error:', error?.message)
+  } catch (error) {
+    console.error('[/api/debug/maintenance-check] Error:', error instanceof Error ? error.message : error)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
   }
 }
@@ -199,8 +199,8 @@ export async function POST(req: NextRequest) {
       alerts: newAlerts,
       emails: newEmails,
     })
-  } catch (error: any) {
-    console.error('[/api/debug/maintenance-check] POST Error:', error?.message)
+  } catch (error) {
+    console.error('[/api/debug/maintenance-check] POST Error:', error instanceof Error ? error.message : error)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
   }
 }

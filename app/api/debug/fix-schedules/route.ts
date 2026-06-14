@@ -9,11 +9,11 @@
  * Safe to run multiple times — only updates records that are missing the value.
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
     const session = await getSession()
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -41,7 +41,6 @@ export async function POST(req: NextRequest) {
 
     for (const s of schedules) {
       const eq = s.equipment
-      const isVehicle = ['truck', 'tipper_truck'].includes(eq.type)
 
       if (s.intervalType === 'km') {
         const nextDueOdometer = (s.lastOdometer ?? eq.currentOdometer) + s.intervalValue
@@ -81,8 +80,8 @@ export async function POST(req: NextRequest) {
       fixed,
       skipped,
     })
-  } catch (error: any) {
-    console.error('[fix-schedules] Error:', error?.message)
+  } catch (error) {
+    console.error('[fix-schedules] Error:', error instanceof Error ? error.message : error)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
   }
 }
